@@ -1,0 +1,505 @@
+---
+title: "cyclist_analysis"
+author: "Judy"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+### 1. About the Project
+Cyclistic is an imaginary bike-share company based on real-world data from Divvy in Chicago.
+This project analyzes the behavioral differences between casual riders and annual members to propose marketing strategies to increase annual memberships.
+
+Goal:
+
+Understand how casual and annual riders use bikes differently.
+
+Provide actionable insights to the marketing team.
+
+Key Stakeholders:
+
+Cyclistic Executive Team
+
+Lily Moreno, Director of Marketing
+
+
+### 2. Data Overview
+Period: September 2023 to August 2024
+
+Source: Divvy Bike Share Data
+
+```{r}
+
+library(tidyverse)
+library(lubridate)
+
+```
+### 3. Load Monthly Ride Data
+
+Importing 12 separate monthly trip data files, from September 2023 to August 2024.  
+
+```{r}
+
+data_202309 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202309-divvy-tripdata/202309-divvy-tripdata.csv")
+data_202310 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202310-divvy-tripdata/202310-divvy-tripdata.csv")
+data_202311 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202311-divvy-tripdata/202311-divvy-tripdata.csv")
+data_202312 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202312-divvy-tripdata/202312-divvy-tripdata.csv")
+data_202401 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202401-divvy-tripdata/202401-divvy-tripdata.csv")
+data_202402 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202402-divvy-tripdata/202402-divvy-tripdata.csv")
+data_202403 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202403-divvy-tripdata/202403-divvy-tripdata.csv")
+data_202404 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202404-divvy-tripdata/202404-divvy-tripdata.csv")
+data_202405 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202405-divvy-tripdata/202405-divvy-tripdata.csv")
+data_202406 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202406-divvy-tripdata/202406-divvy-tripdata.csv")
+data_202407 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202407-divvy-tripdata/202407-divvy-tripdata.csv")
+data_202408 <- read_csv ("C:/Users/judin/OneDrive/Documents/data_analysis/google_certificate/capstone_cyclistic/202408-divvy-tripdata/202408-divvy-tripdata.csv")
+
+```
+
+### 4. Check the First Few Rows of the Data
+
+Quickly inspect the first few rows of the September 2023 trip data to ensure the data has been imported correctly.
+
+```{r}
+head(data_202309, 10)
+
+```
+
+
+### 5. Combining the dataset 
+(rbind:rigid and risky / bind_rows:forgiving, flexible)
+
+```{r}
+data_combined <- bind_rows(data_202309, data_202310, data_202311, data_202312,
+                       data_202401, data_202402, data_202403, data_202404,
+                       data_202405, data_202406, data_202407, data_202408)
+```
+
+### 6. Normalization
+Step to reduce noise, improve performance, and focus the analysis. Excluded columns such as station names and coordinates, as they are either incomplete or not essential to the current behavioral comparison between casual and annual riders.
+
+```{r}
+rider_info <- data_combined %>%
+  select(ride_id, rideable_type, started_at, ended_at, member_casual)
+
+```
+
+
+### 7. Checking the process
+
+Check the first few rows and structure of the cleaned dataset to verify that the normalization step was successful.
+
+```{r}
+head(rider_info)
+glimpse(rider_info)
+```
+
+### 8. Data Cleaning
+8.1. Verifying missing values. 
+
+```{r}
+
+colSums(is.na(rider_info))
+
+```
+
+8.2. Deleting NA rows.(If necessary, not in my case because there are no missing valures.)
+
+```{r}
+rider_info <- rider_info %>%
+  filter(!is.na(started_at), !is.na(ended_at))
+```
+
+
+### 9. Calculating ride_length of bikers
+I need to calculate before separating the time and the data to avoid later intrusion of adding the dates into the time column.
+
+```{r}
+rider_info <- rider_info %>%
+  mutate(
+    ride_length = as.numeric(difftime(ended_at, started_at, units = "mins"))
+  )
+
+```
+
+```{r}
+head(rider_info, 10)
+```
+
+### 10. Rounding Ride Duration
+To enhance readability and simplify analysis, we rounded the `ride_length` values to two decimal places.
+
+```{r}
+rider_info$ride_length <- round(rider_info$ride_length, 2)
+```
+
+```{r}
+head(rider_info, 10)
+```
+
+### 11. Cleaning Data -> removing abnormal entries in ride duration
+
+```{r}
+rider_info %>%
+  filter(ride_length <= 0 | ride_length >= 1440) %>%
+  nrow()
+
+```
+```{r}
+sum(rider_info$ride_length <= 0)
+sum(rider_info$ride_length >= 1440)
+```
+
+```{r}
+rider_info <- rider_info %>%
+  filter(
+    !is.na(ride_length),
+    ride_length > 0,
+    ride_length < 1440  # over 24 hours (remove abnormal entries)
+  )
+
+```
+
+
+### 12. Summary Table for Rider Type Comparison
+
+Creating a summary table to organize and simplify the original ride data.  
+
+The summary table allows us to:
+- Quickly compare total ride time and ride frequency between user types
+- Visualize behavioral differences more clearly through charts (pie chart, line chart)
+- Highlight key insights, such as the similarity in total ride time despite large differences in ride counts
+
+This normalization and summarization step is critical to avoid being overwhelmed by raw data and to focus the analysis on patterns that are meaningful for marketing strategy development.
+```{r}
+
+summary_table <- rider_info %>%
+  group_by(member_casual) %>%
+  summarise(
+    total_ride_time = sum(ride_length),
+    total_ride_count = n()
+  ) %>%
+  mutate(
+    share_of_total_time = round(total_ride_time / sum(total_ride_time) * 100, 1),
+    share_of_total_rides = round(total_ride_count / sum(total_ride_count) * 100, 1)
+  )
+
+
+
+```
+
+```{r}
+
+summary_long <- summary_table %>%
+  select(member_casual, share_of_total_time, share_of_total_rides) %>%
+  pivot_longer(
+    cols = c(share_of_total_time, share_of_total_rides),
+    names_to = "metric",
+    values_to = "percentage"
+  ) %>%
+  mutate(
+    metric = case_when(
+      metric == "share_of_total_time" ~ "Total Bike Time",
+      metric == "share_of_total_rides" ~ "Total Riders"
+    )
+  )
+
+```
+
+
+### 13. Horizontal Bar Chart: Casual vs Member Usage Patterns
+
+To better emphasize the behavioral differences between casual and member riders,  
+we visualized the total ride time and ride count using a horizontal grouped bar chart.
+
+This chart makes the contrast clear:
+- Casual riders take **fewer rides** but spend **almost as much total time** riding as members.
+- Member riders account for **more than 60% of total rides**, yet the **total ride time is nearly equal**.
+
+This insight is important when considering strategies to convert casual users to annual members.
+
+
+```{r}
+ggplot(summary_long, aes(x = percentage, y = metric, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+    scale_y_discrete(
+    labels = c("share_of_total_time" = "Total Bike Time", 
+               "share_of_total_rides" = "Total Riders")
+  ) +
+  scale_fill_manual(
+    values = c("casual" = "pink", "member" = "skyblue")
+  ) +
+  labs(
+    title = "Casual vs Member: Ride Time vs Ride Count",
+    x = "Percentage (%)",
+    y = "Metric",
+    fill = "Rider Type"
+  ) +
+  theme_minimal()
+
+```
+⚠️ Note on Data Limitation:
+
+The dataset does not include user identifiers, so it's not possible to determine how many unique users are included in each rider type.  
+As a result, our analysis focuses on the **total number of rides**, rather than **the number of individual users**.  
+This limitation is important to remember when interpreting ride counts for casual vs. member users.
+
+
+### 14. Separating Date and Time
+
+Instead of splitting the datetime columns using `separate()`,  
+I extracted the date and time components using `mutate()` and `format()` functions.  
+This approach avoids data type issues and allows us to retain the original datetime columns for further calculations like `ride_length`.
+
+```{r}
+rider_info <- rider_info %>%
+  mutate(
+    start_date = as.Date(started_at),
+    start_time = format(started_at, format = "%H:%M:%S"),
+    end_date = as.Date(ended_at),
+    end_time = format(ended_at, format = "%H:%M:%S")
+  )
+
+```
+
+```{r}
+head(rider_info)
+```
+
+
+### 15. Creating Temporal Variables (Month, Season, Day of the Week)
+
+To better understand time-related trends in rider behavior,  
+I extracted temporal variables from the `started_at` datetime column.
+
+These variables include:
+- `month`: to analyze seasonal patterns and peak months
+- `season`: to identify high and low usage seasons
+- `day_of_week`: to explore weekday vs. weekend usage
+
+These variables will help us uncover when casual and member riders are most active and how usage changes over time.
+
+```{r}
+
+rider_info <- rider_info %>%
+  mutate(
+    month = month(started_at, label = TRUE, abbr = TRUE),
+    day_of_week = wday(started_at, label = TRUE, week_start = 1),
+    season = case_when(
+      month(started_at) %in% 3:5 ~ "Spring",
+      month(started_at) %in% 6:8 ~ "Summer",
+      month(started_at) %in% 9:11 ~ "Fall",
+      TRUE ~ "Winter"
+    ),
+    season = factor(season, levels = c("Spring", "Summer", "Fall", "Winter"), ordered = TRUE)
+  )
+
+```
+
+```{r}
+head(rider_info, 10)
+```
+
+### 16. Changing the Months,and seasons in English
+
+```{r}
+Sys.setlocale("LC_TIME", "English")
+Sys.setlocale("LC_TIME", "C")
+
+```
+
+
+```{r}
+rider_info <- rider_info %>%
+  mutate(
+    day_of_week = weekdays(started_at, abbreviate = FALSE)
+  )
+
+rider_info <- rider_info %>%
+  mutate(
+    month = month(started_at, label = TRUE, abbr = TRUE)
+  )
+
+```
+
+
+```{r}
+head(rider_info, 10)
+```
+
+### 17. Monthly Ride Count by Rider Type
+
+To identify seasonal usage patterns, we visualized the number of rides per month by rider type.
+
+This helps uncover:
+- Which months casual riders are most active
+- Whether member riders ride more consistently throughout the year.
+- Strategic timing for promotions or seasonal membership offers. (indicated in the PPT)
+
+```{r}
+
+ggplot(rider_info, aes(x = month, fill = member_casual)) +
+  geom_bar(position = "dodge") +
+  scale_fill_manual(
+    values = c("casual" = "pink", "member" = "skyblue")
+  ) +
+  labs(
+    title = "Monthly Ride Count by Rider Type",
+    x = "Month",
+    y = "Number of Rides",
+    fill = "Rider Type"
+  ) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal()
+
+```
+
+### 18. Seasonal Ride Count by Rider Type
+
+This chart shows how rider activity varies by season.
+
+We can observe:
+- Casual riders peak in the summer, likely due to weather and tourism.
+- Member riders show more consistent usage across all seasons.
+- Winter drop-off is especially sharp for casual users.
+
+I have suggested eco-protector campaign.(indicated in the PPT)
+
+```{r}
+ggplot(rider_info, aes(x = season, fill = member_casual)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Seasonal Ride Count by Rider Type",
+    x = "Season",
+    y = "Number of Rides",
+    fill = "Rider Type"
+  ) +
+  scale_fill_manual(values = c("casual" = "pink", "member" = "skyblue")) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal()
+
+```
+
+### 19. Weekly Ride Count by Rider Type
+
+This chart shows how rides taken each day of the week by rider type. 
+
+As indicated in the slide, casual riders peak during weekends,  
+while members tend to ride more consistently across weekdays, likely due to commuting habits.
+
+I have suggested 2+1 promotion.(indicated in the PPT)
+
+```{r}
+ggplot(rider_info, aes(x = day_of_week, fill = member_casual)) +
+  geom_bar(position = "dodge") +
+  labs(
+    title = "Days of the Week Count by Rider Type",
+    x = "Days of the week",
+    y = "Number of Rides",
+    fill = "Rider Type"
+  ) +
+  scale_fill_manual(values = c("casual" = "pink", "member" = "skyblue")) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal()
+
+rider_info$day_of_week <- factor(rider_info$day_of_week,
+  levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+  ordered = TRUE
+)
+
+```
+### 20. Classic VS Electric Bike
+
+```{r}
+table(rider_info$rideable_type)
+
+bike_rider_summary <- rider_info %>%
+  group_by(rideable_type, member_casual) %>%
+  summarise(
+    ride_count = n(),
+    .groups = "drop"
+  )
+
+ggplot(bike_rider_summary, aes(x = rideable_type, y = ride_count, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Ride Count by Bike Type and Rider Type",
+    x = "Bike Type",
+    y = "Number of Rides",
+    fill = "Rider Type"
+  ) +
+  scale_y_continuous(labels = scales::comma) +
+  scale_fill_manual(values = c("casual" = "pink", "member" = "skyblue")) +
+  theme_minimal()
+
+```
+### 21. Bike Type Preference of Each Rider Type
+
+Although the absolute ride counts appear significantly different in the previous chart,  
+the percentage breakdown reveals that both rider types have a fairly balanced usage between classic and electric bikes.
+
+This highlights the importance of choosing the right visual format when interpreting data.
+
+```{r}
+bike_percent <- rider_info %>%
+  group_by(member_casual, rideable_type) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(member_casual) %>%
+  mutate(percent = round(count / sum(count) * 100, 1))
+
+
+ggplot(bike_percent, aes(x = member_casual, y = percent, fill = rideable_type)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Bike Type Preference by Rider Type (Percentage)",
+    x = "Rider Type",
+    y = "Percentage (%)",
+    fill = "Bike Type"
+  ) +
+  scale_fill_manual(values = c("classic_bike" = "black", "electric_bike" = "gray")) +
+  theme_minimal()
+
+```
+Although the absolute ride counts appear significantly different in the previous chart,  
+the percentage breakdown reveals that both rider types have a fairly balanced usage between classic and electric bikes.
+
+This highlights the importance of choosing the right visual format when interpreting data.
+
+
+### 22. Average Ride Length by Bike Type and Rider Type
+
+This chart explores how the duration of rides varies based on both rider type and bike type.
+
+
+```{r}
+bike_ride_length <- rider_info %>%
+  group_by(rideable_type, member_casual) %>%
+  summarise(
+    avg_ride_length = round(mean(ride_length), 2),
+    .groups = "drop"
+  )
+
+ggplot(bike_ride_length, aes(x = rideable_type, y = avg_ride_length, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Average Ride Length by Bike Type and Rider Type",
+    x = "Bike Type",
+    y = "Average Ride Duration (minutes)",
+    fill = "Rider Type"
+  ) +
+  scale_fill_manual(values = c("casual" = "pink", "member" = "skyblue")) +
+  theme_minimal()
+```
+
+
+You can find the corresponding presentation slides in this GitHub repository for further reference.
+
+
