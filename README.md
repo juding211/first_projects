@@ -4,9 +4,9 @@ Formation Data Engineering & Data Analysis/AI
 Korea Cyber University 
 
 ---
-## 📚 Coursework
+##  Coursework
 
-### 🔢 Mathematics & Computing
+###  Mathematics & Computing
 - Probability & Statistics
 - Linear Algebra
 - Introduction to Optimization
@@ -15,25 +15,25 @@ Korea Cyber University
 - Operating Systems
 - Distributed & Parallel Computing
 
-### 🤖 AI & Machine Learning
+###  AI & Machine Learning
 - Artificial Intelligence
 - Machine Learning & Big Data Analysis (R)
 - AI Development Practice
 
-### 📊 Data Engineering & Analysis
+###  Data Engineering & Analysis
 - Python Programming
 - Database Systems
 - Big Data Introduction · Big Data Processing
 - Structured Data Analysis · Data Analysis Planning
 - Cloud Computing · Cloud Infrastructure Architecture
 
-## 📁 Projects
+##  Projects
 | Project | Stack |
 |---------|-------|
 | [E-commerce DB (SQL)](./RDBMS) | SQL |
 | [Statistical Analysis in Python](./statistics) | Python |
 
-## 📁 External Projects
+##  External Projects
 | Project | Source | Stack |
 |---------|--------|-------|
 | [Cyclist Behavior Analysis](./R_capstoneproj) | Google Data Analytics Capstone | R, ggplot2 |
@@ -41,10 +41,10 @@ Korea Cyber University
 
 ---
 
-## 🛠 Tech Stack
+##  Tech Stack
 Python · R · SQL · Power BI · Tableau · Jupyter Notebook · GitHub
 
 ---
 
-## 📬 Contact
+##  Contact
 [LinkedIn](https://www.linkedin.com/in/juhyun-judy-lee)
